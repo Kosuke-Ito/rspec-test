@@ -1,30 +1,35 @@
 require 'rails_helper'
 
 RSpec.describe Event, type: :model do
-  before do
-    @event = FactoryBot.create(:event)
-    @user = @event.owner
+  let(:user){ create(:user) }
+  let(:event){ create(:event, owner_id: user.id) }
+
+  describe '#created_by?' do
+    it 'イベントを作成したユーザーのとき、trueになること' do
+      expect(event.created_by?(user)).to eq true
+    end
+  
+    it 'イベントを作成したユーザーと違うとき、falseになること' do
+      another_user = create(:user)
+      expect(event.created_by?(another_user)).to eq false
+    end
+  
+    it '引数がnilなとき、falseになること' do
+      expect(event.created_by?(nil)).to eq false
+    end
   end
 
-  it '#created_by? owner_id と 引数の#id が同じとき' do
-    expect(@event.created_by?(@user)).to eq true
-  end
+  describe 'start_at_should_be_before_end_at バリデーション' do
+    let(:time) { 1.days.from_now }
+    let(:event) { build(:event, start_at: time, end_at: time + 1.seconds) }
 
-  it '#created_by? owner_id と 引数の#id が異なるとき' do
-    another_user = FactoryBot.create(:user)
-    expect(@event.created_by?(another_user)).to eq false
-  end
-
-  it '#created_by? 引数が nil なとき' do
-    expect(@event.created_by?(nil)).to eq false
-  end
-
-  it 'start_at_should_be_before_end_at validation OK' do
-    expect(@event.valid?).to eq true
-  end
-
-  it '開始は終わりよりも前じゃないといけない validation error' do
-    @event.end_at = @event.start_at - rand(1..30).hours
-    expect(@event.valid?).to eq false
+    context 'start_atよりもend_atが後の日付のとき' do
+      it { expect(event.valid?).to eq true }
+    end
+  
+    context 'start_atよりもend_atが前の日付のとき' do
+      let(:another_event) { build(:event, start_at: time, end_at: time - 1.seconds) }
+      it { expect(another_event.valid?).to eq false }
+    end
   end
 end
